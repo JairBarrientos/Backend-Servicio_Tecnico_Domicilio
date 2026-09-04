@@ -1,0 +1,42 @@
+# ============================================
+# Configuración del servidor
+# ============================================
+server.port=8080
+
+# ============================================
+# Conexión a PostgreSQL
+# ============================================
+spring.datasource.url=jdbc:postgresql://localhost:5432/servicio_tecnico_domicilio
+spring.datasource.username=[USUARIO_POSTGRES]
+spring.datasource.password=[PASSWORD_POSTGRES]
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# ============================================
+# JPA / Hibernate
+# ============================================
+spring.jpa.hibernate.ddl-auto=none
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+# ============================================
+# Multipart (para subida de imágenes)
+# ============================================
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=10MB
+
+# ============================================
+# JWT
+# ============================================
+jwt.secret=[JWT_SECRET]
+jwt.expiration=86400000
+
+# ============================================
+# Correo (Gmail SMTP)
+# ============================================
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=[CORREO_GMAIL]
+spring.mail.password=[APP_PASSWORD_GMAIL]
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
