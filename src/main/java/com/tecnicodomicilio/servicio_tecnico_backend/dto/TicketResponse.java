@@ -30,4 +30,6 @@ public class TicketResponse {
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaCita;
     private BigDecimal precioFinal;
+    private BigDecimal precioOfertado;
+    private BigDecimal precioContraoferta;
 }

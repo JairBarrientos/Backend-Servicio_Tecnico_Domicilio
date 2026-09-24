@@ -94,6 +94,12 @@ public class Ticket {
     @Builder.Default
     private BigDecimal precioVisita = new BigDecimal("30.00");
 
+    @Column(name = "precio_ofertado", precision = 10, scale = 2)
+    private BigDecimal precioOfertado;
+
+    @Column(name = "precio_contraoferta", precision = 10, scale = 2)
+    private BigDecimal precioContraoferta;
+
     @Column(name = "precio_diagnostico", precision = 10, scale = 2)
     @Builder.Default
     private BigDecimal precioDiagnostico = BigDecimal.ZERO;

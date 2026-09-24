@@ -7,6 +7,7 @@ import com.tecnicodomicilio.servicio_tecnico_backend.model.*;
 import com.tecnicodomicilio.servicio_tecnico_backend.repository.*;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,14 +40,14 @@ public class TicketService {
 
         CatalogoServicio servicio = null;
         if (request.getServicioId() != null) {
-                servicio = catalogoServicioRepository.findById(request.getServicioId())
-                        .orElseThrow(() -> new RuntimeException("Servicio no encontrado"));
+            servicio = catalogoServicioRepository.findById(request.getServicioId())
+                    .orElseThrow(() -> new RuntimeException("Servicio no encontrado"));
         }
 
         DireccionUsuario direccion = null;
         if (request.getDireccionId() != null) {
-                direccion = direccionUsuarioRepository.findById(request.getDireccionId())
-                        .orElseThrow(() -> new RuntimeException("Dirección no encontrada"));
+            direccion = direccionUsuarioRepository.findById(request.getDireccionId())
+                    .orElseThrow(() -> new RuntimeException("Dirección no encontrada"));
         }
 
         Ticket ticket = Ticket.builder()
@@ -62,26 +63,27 @@ public class TicketService {
                 .marca(request.getMarca())
                 .modelo(request.getModelo())
                 .urgencia(request.getUrgencia() != null ? request.getUrgencia() : "MEDIA")
+                .precioOfertado(request.getPrecioOfertado())
                 .estado("PENDIENTE")
                 .build();
 
         if (request.getLatitud() != null && request.getLongitud() != null) {
-                java.time.LocalDateTime fechaReferencia = java.time.LocalDateTime.now();
+            java.time.LocalDateTime fechaReferencia = java.time.LocalDateTime.now();
 
-                tecnicoDetalleRepository.buscarTecnicoMasCercanoDisponible(
-                        request.getLatitud(), request.getLongitud(), fechaReferencia
-                ).ifPresent(tecnicoId -> {
+            tecnicoDetalleRepository.buscarTecnicoMasCercanoDisponible(
+                    request.getLatitud(), request.getLongitud(), fechaReferencia
+            ).ifPresent(tecnicoId -> {
                 Usuario tecnico = usuarioRepository.findById(tecnicoId).orElse(null);
                 if (tecnico != null) {
-                        ticket.setTecnicoAsignado(tecnico);
-                        ticket.setEstado("ASIGNADO");
+                    ticket.setTecnicoAsignado(tecnico);
+                    ticket.setEstado("PENDIENTE_ACEPTACION");
                 }
-                });
+            });
         }
 
         Ticket guardado = ticketRepository.save(ticket);
         return mapearResponse(guardado);
-        }
+    }
 
     public List<TicketResponse> listarPorCliente(String correoCliente) {
         Usuario cliente = usuarioRepository.findByCorreo(correoCliente)
@@ -147,6 +149,48 @@ public class TicketService {
         return mapearResponse(actualizado);
     }
 
+    public TicketResponse aceptar(Long ticketId, Long tecnicoId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket no encontrado"));
+
+        if (!ticket.getTecnicoAsignado().getId().equals(tecnicoId)) {
+            throw new RuntimeException("Este ticket no te fue asignado");
+        }
+
+        ticket.setEstado("ASIGNADO");
+        Ticket actualizado = ticketRepository.save(ticket);
+        return mapearResponse(actualizado);
+    }
+
+    public TicketResponse rechazar(Long ticketId, Long tecnicoId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket no encontrado"));
+
+        ticket.setEstado("PENDIENTE");
+        ticket.setTecnicoAsignado(null);
+        Ticket actualizado = ticketRepository.save(ticket);
+        return mapearResponse(actualizado);
+    }
+
+    public TicketResponse contraofertar(Long ticketId, Long tecnicoId, BigDecimal nuevoPrecio) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket no encontrado"));
+
+        ticket.setPrecioContraoferta(nuevoPrecio);
+        Ticket actualizado = ticketRepository.save(ticket);
+        return mapearResponse(actualizado);
+    }
+
+    public TicketResponse aceptarContraoferta(Long ticketId) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket no encontrado"));
+
+        ticket.setPrecioOfertado(ticket.getPrecioContraoferta());
+        ticket.setEstado("ASIGNADO");
+        Ticket actualizado = ticketRepository.save(ticket);
+        return mapearResponse(actualizado);
+    }
+
     private TicketResponse mapearResponse(Ticket ticket) {
         return TicketResponse.builder()
                 .id(ticket.getId())
@@ -168,6 +212,18 @@ public class TicketService {
                 .fechaCreacion(ticket.getFechaCreacion())
                 .fechaCita(ticket.getFechaCita())
                 .precioFinal(ticket.getPrecioFinal())
+                .precioOfertado(ticket.getPrecioOfertado())
+                .precioContraoferta(ticket.getPrecioContraoferta())
                 .build();
     }
+
+    public List<TicketResponse> listarPendientesTecnico(String correoTecnico) {
+        Usuario tecnico = usuarioRepository.findByCorreo(correoTecnico)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        return ticketRepository.findByTecnicoAsignadoId(tecnico.getId()).stream()
+                .filter(t -> "PENDIENTE_ACEPTACION".equals(t.getEstado()))
+                .map(this::mapearResponse)
+                .collect(Collectors.toList());
+        }
 }

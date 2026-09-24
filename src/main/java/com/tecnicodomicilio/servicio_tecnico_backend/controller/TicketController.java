@@ -3,6 +3,8 @@ package com.tecnicodomicilio.servicio_tecnico_backend.controller;
 import com.tecnicodomicilio.servicio_tecnico_backend.dto.CambiarEstadoRequest;
 import com.tecnicodomicilio.servicio_tecnico_backend.dto.TicketRequest;
 import com.tecnicodomicilio.servicio_tecnico_backend.dto.TicketResponse;
+import com.tecnicodomicilio.servicio_tecnico_backend.model.Usuario;
+import com.tecnicodomicilio.servicio_tecnico_backend.repository.UsuarioRepository;
 import com.tecnicodomicilio.servicio_tecnico_backend.service.TicketService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +21,11 @@ import java.util.Map;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final UsuarioRepository usuarioRepository;
 
-    public TicketController(TicketService ticketService) {
+    public TicketController(TicketService ticketService, UsuarioRepository usuarioRepository) {
         this.ticketService = ticketService;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @PostMapping
@@ -95,5 +99,57 @@ public class TicketController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
+    }
+
+    @PostMapping("/{id}/aceptar")
+    public ResponseEntity<?> aceptar(@PathVariable Long id, Authentication authentication) {
+        try {
+            Usuario tecnico = usuarioRepository.findByCorreo(authentication.getName())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            TicketResponse response = ticketService.aceptar(id, tecnico.getId());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/rechazar")
+    public ResponseEntity<?> rechazar(@PathVariable Long id, Authentication authentication) {
+        try {
+            Usuario tecnico = usuarioRepository.findByCorreo(authentication.getName())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            TicketResponse response = ticketService.rechazar(id, tecnico.getId());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/contraoferta")
+    public ResponseEntity<?> contraofertar(@PathVariable Long id, Authentication authentication,
+                                            @RequestBody Map<String, java.math.BigDecimal> body) {
+        try {
+            Usuario tecnico = usuarioRepository.findByCorreo(authentication.getName())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            TicketResponse response = ticketService.contraofertar(id, tecnico.getId(), body.get("precio"));
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/aceptar-contraoferta")
+    public ResponseEntity<?> aceptarContraoferta(@PathVariable Long id) {
+        try {
+            TicketResponse response = ticketService.aceptarContraoferta(id);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/pendientes-tecnico")
+    public ResponseEntity<List<TicketResponse>> listarPendientesTecnico(Authentication authentication) {
+        return ResponseEntity.ok(ticketService.listarPendientesTecnico(authentication.getName()));
     }
 }

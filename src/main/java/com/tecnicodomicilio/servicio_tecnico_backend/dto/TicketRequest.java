@@ -21,4 +21,5 @@ public class TicketRequest {
     private String marca;
     private String modelo;
     private String urgencia;
+    private BigDecimal precioOfertado;
 }
