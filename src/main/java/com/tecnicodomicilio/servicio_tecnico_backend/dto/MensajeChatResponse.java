@@ -21,4 +21,5 @@ public class MensajeChatResponse {
     private String archivoUrl;
     private Boolean leido;
     private LocalDateTime fechaEnvio;
+    private Boolean esMio;
 }

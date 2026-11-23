@@ -72,4 +72,13 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
+
+    @PostMapping("/reenviar-codigo")
+    public ResponseEntity<?> reenviarCodigo(@RequestBody RecuperarRequest request) {
+        try {
+            return ResponseEntity.ok(authService.reenviarVerificacion(request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
 }

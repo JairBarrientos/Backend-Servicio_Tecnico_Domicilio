@@ -5,12 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "tecnicos_detalles")
+@DynamicUpdate
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -47,7 +49,7 @@ public class TecnicoDetalle {
     @Builder.Default
     private Integer radioCobertura = 10;
 
-    @Column(name = "disponibilidad_json", columnDefinition = "jsonb")
+    @Column(name = "disponibilidad_json", columnDefinition = "jsonb", insertable = false, updatable = false)
     private String disponibilidadJson;
 
     @Column(name = "calificacion_promedio", precision = 2, scale = 1)
@@ -67,4 +69,20 @@ public class TecnicoDetalle {
 
     @Column(name = "fecha_contratacion", updatable = false, insertable = false)
     private LocalDateTime fechaContratacion;
+
+    @Column(name = "estado_verificacion", nullable = false, length = 20)
+    @Builder.Default
+    private String estadoVerificacion = "INCOMPLETO";
+
+    @Column(name = "cv_url", length = 255)
+    private String cvUrl;
+
+    @Column(name = "dni_url", length = 255)
+    private String dniUrl;
+
+    @Column(name = "motivo_rechazo", length = 200)
+    private String motivoRechazo;
+
+    @Column(name = "fecha_envio_revision")
+    private LocalDateTime fechaEnvioRevision;
 }

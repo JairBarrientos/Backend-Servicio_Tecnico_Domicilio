@@ -53,39 +53,105 @@ public class AuthService {
                 .build();
     }
 
-    public RegistroResponse registrar(RegistroRequest request) {
-    if (usuarioRepository.existsByCorreo(request.getCorreo())) {
-        throw new RuntimeException("El correo ya está registrado");
+        public RegistroResponse registrar(RegistroRequest request) {
+        validarRegistro(request);
+
+        String correo = texto(request.getCorreo());
+        String dni = texto(request.getDni());
+
+        if (usuarioRepository.existsByCorreo(correo)) {
+            throw new RuntimeException("El correo ya está registrado");
+        }
+        if (usuarioRepository.existsByDni(dni)) {
+            throw new RuntimeException("El DNI ya está registrado");
+        }
+
+        String codigo = String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
+
+        Usuario usuario = Usuario.builder()
+                .nombres(texto(request.getNombres()))
+                .apellidos(texto(request.getApellidos()))
+                .dni(dni)
+                .correo(correo)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .telefono(texto(request.getTelefono()))
+                .rol(request.getRol())
+                .estado("PENDIENTE")
+                .verificado(false)
+                .codigoVerificacion(codigo)
+                .fechaCodigo(java.time.LocalDateTime.now())
+                .build();
+
+        Usuario guardado = usuarioRepository.save(usuario);
+
+        emailService.enviarCodigoVerificacion(guardado.getCorreo(), codigo);
+
+        return RegistroResponse.builder()
+                .id(guardado.getId())
+                .correo(guardado.getCorreo())
+                .mensaje("Usuario registrado. Revisa tu correo para el código de verificación.")
+                .build();
     }
-    if (usuarioRepository.existsByDni(request.getDni())) {
-        throw new RuntimeException("El DNI ya está registrado");
+
+    public RegistroResponse reenviarVerificacion(RecuperarRequest request) {
+        String correo = texto(request.getCorreo());
+
+        Usuario usuario = usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new RuntimeException("Correo no encontrado"));
+
+        if (Boolean.TRUE.equals(usuario.getVerificado())) {
+            throw new RuntimeException("Tu cuenta ya está verificada. Inicia sesión");
+        }
+
+        if (usuario.getFechaCodigo() != null
+                && usuario.getFechaCodigo().plusSeconds(60).isAfter(java.time.LocalDateTime.now())) {
+            throw new RuntimeException("Espera un minuto antes de pedir otro código");
+        }
+
+        String codigo = String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
+
+        usuario.setCodigoVerificacion(codigo);
+        usuario.setFechaCodigo(java.time.LocalDateTime.now());
+        usuarioRepository.save(usuario);
+
+        emailService.enviarCodigoVerificacion(usuario.getCorreo(), codigo);
+
+        return RegistroResponse.builder()
+                .id(usuario.getId())
+                .correo(usuario.getCorreo())
+                .mensaje("Te enviamos un código nuevo")
+                .build();
     }
 
-    String codigo = String.format("%06d", new java.util.Random().nextInt(999999));
+    private void validarRegistro(RegistroRequest request) {
+        if (!"CLIENTE".equals(request.getRol()) && !"TECNICO".equals(request.getRol())) {
+            throw new RuntimeException("Tipo de cuenta no válido");
+        }
 
-    Usuario usuario = Usuario.builder()
-            .nombres(request.getNombres())
-            .apellidos(request.getApellidos())
-            .dni(request.getDni())
-            .correo(request.getCorreo())
-            .password(passwordEncoder.encode(request.getPassword()))
-            .telefono(request.getTelefono())
-            .rol(request.getRol())
-            .estado("PENDIENTE")
-            .verificado(false)
-            .codigoVerificacion(codigo)
-            .fechaCodigo(java.time.LocalDateTime.now())
-            .build();
+        String nombres = texto(request.getNombres());
+        String apellidos = texto(request.getApellidos());
 
-    Usuario guardado = usuarioRepository.save(usuario);
+        if (nombres.isEmpty() || apellidos.isEmpty()) {
+            throw new RuntimeException("Escribe tus nombres y apellidos");
+        }
+        if (nombres.length() > 100 || apellidos.length() > 100) {
+            throw new RuntimeException("Tus nombres o apellidos son demasiado largos");
+        }
+        if (!texto(request.getDni()).matches("\\d{8}")) {
+            throw new RuntimeException("El DNI debe tener 8 dígitos");
+        }
+        if (!texto(request.getCorreo()).matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            throw new RuntimeException("Escribe un correo válido");
+        }
+        if (!texto(request.getTelefono()).matches("\\d{9}")) {
+            throw new RuntimeException("El teléfono debe tener 9 dígitos");
+        }
 
-    emailService.enviarCodigoVerificacion(guardado.getCorreo(), codigo);
+        PasswordPolicy.validar(request.getPassword());
+    }
 
-    return RegistroResponse.builder()
-            .id(guardado.getId())
-            .correo(guardado.getCorreo())
-            .mensaje("Usuario registrado. Revisa tu correo para el código de verificación.")
-            .build();
+    private String texto(String valor) {
+        return valor != null ? valor.trim() : "";
     }
 
     public RegistroResponse verificar(VerificarRequest request) {
@@ -116,48 +182,83 @@ public class AuthService {
             .build();
     }
 
-    public RegistroResponse recuperar(RecuperarRequest request) {
-    Usuario usuario = usuarioRepository.findByCorreo(request.getCorreo())
-            .orElseThrow(() -> new RuntimeException("Correo no encontrado"));
+        public RegistroResponse recuperar(RecuperarRequest request) {
+        String correo = request.getCorreo() != null ? request.getCorreo().trim() : "";
 
-    String codigo = String.format("%06d", new java.util.Random().nextInt(999999));
+        Usuario usuario = usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new RuntimeException("Correo no encontrado"));
 
-    usuario.setCodigoVerificacion(codigo);
-    usuario.setFechaCodigo(java.time.LocalDateTime.now());
-    usuarioRepository.save(usuario);
+        validarCuentaParaRecuperar(usuario);
 
-    emailService.enviarCodigoVerificacion(usuario.getCorreo(), codigo);
+        if (usuario.getFechaCodigo() != null
+                && usuario.getFechaCodigo().plusSeconds(60).isAfter(java.time.LocalDateTime.now())) {
+            throw new RuntimeException("Espera un minuto antes de pedir otro código");
+        }
 
-    return RegistroResponse.builder()
-            .id(usuario.getId())
-            .correo(usuario.getCorreo())
-            .mensaje("Código de recuperación enviado a tu correo")
-            .build();
-}
+        String codigo = String.format("%06d", new java.security.SecureRandom().nextInt(1_000_000));
 
-public RegistroResponse restablecer(RestablecerRequest request) {
-    Usuario usuario = usuarioRepository.findByCorreo(request.getCorreo())
-            .orElseThrow(() -> new RuntimeException("Correo no encontrado"));
-
-    if (usuario.getFechaCodigo().plusMinutes(15).isBefore(java.time.LocalDateTime.now())) {
-        throw new RuntimeException("El código expiró, solicita uno nuevo");
-    }
-
-    if (!usuario.getCodigoVerificacion().equals(request.getCodigo())) {
-        usuario.setIntentosRecuperacion(usuario.getIntentosRecuperacion() + 1);
+        usuario.setCodigoVerificacion(codigo);
+        usuario.setFechaCodigo(java.time.LocalDateTime.now());
         usuarioRepository.save(usuario);
-        throw new RuntimeException("Código incorrecto");
+
+        emailService.enviarCodigoRecuperacion(usuario.getCorreo(), codigo);
+
+        return RegistroResponse.builder()
+                .id(usuario.getId())
+                .correo(usuario.getCorreo())
+                .mensaje("Código de recuperación enviado a tu correo")
+                .build();
     }
 
-    usuario.setPassword(passwordEncoder.encode(request.getNuevaPassword()));
-    usuario.setCodigoVerificacion(null);
-    usuario.setIntentosRecuperacion(0);
-    usuarioRepository.save(usuario);
+    public RegistroResponse restablecer(RestablecerRequest request) {
+        String correo = request.getCorreo() != null ? request.getCorreo().trim() : "";
 
-    return RegistroResponse.builder()
-            .id(usuario.getId())
-            .correo(usuario.getCorreo())
-            .mensaje("Contraseña restablecida correctamente")
-            .build();
+        Usuario usuario = usuarioRepository.findByCorreo(correo)
+                .orElseThrow(() -> new RuntimeException("Correo no encontrado"));
+
+        validarCuentaParaRecuperar(usuario);
+        PasswordPolicy.validar(request.getNuevaPassword());
+
+        if (usuario.getCodigoVerificacion() == null || usuario.getFechaCodigo() == null) {
+            throw new RuntimeException("Solicita un código de recuperación primero");
+        }
+
+        if (usuario.getFechaCodigo().plusMinutes(15).isBefore(java.time.LocalDateTime.now())) {
+            throw new RuntimeException("El código expiró, solicita uno nuevo");
+        }
+
+        if (!usuario.getCodigoVerificacion().equals(request.getCodigo())) {
+            int intentos = usuario.getIntentosRecuperacion() + 1;
+            usuario.setIntentosRecuperacion(intentos);
+            usuarioRepository.save(usuario);
+
+            if (intentos >= 3) {
+                throw new RuntimeException("Código incorrecto. Tu cuenta fue bloqueada por demasiados intentos. Contacta con soporte");
+            }
+
+            int quedan = 3 - intentos;
+            throw new RuntimeException("Código incorrecto. Te quedan " + quedan
+                    + (quedan == 1 ? " intento" : " intentos"));
+        }
+
+        usuario.setPassword(passwordEncoder.encode(request.getNuevaPassword()));
+        usuario.setCodigoVerificacion(null);
+        usuario.setIntentosRecuperacion(0);
+        usuarioRepository.save(usuario);
+
+        return RegistroResponse.builder()
+                .id(usuario.getId())
+                .correo(usuario.getCorreo())
+                .mensaje("Contraseña restablecida correctamente")
+                .build();
+    }
+
+    private void validarCuentaParaRecuperar(Usuario usuario) {
+        if ("BLOQUEADO".equals(usuario.getEstado())) {
+            throw new RuntimeException("Tu cuenta está bloqueada. Contacta con soporte");
+        }
+        if (!"ACTIVO".equals(usuario.getEstado())) {
+            throw new RuntimeException("Tu cuenta aún no está verificada. Verifica tu correo primero");
+        }
     }
 }

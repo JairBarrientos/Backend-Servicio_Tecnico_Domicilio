@@ -2,6 +2,7 @@ package com.tecnicodomicilio.servicio_tecnico_backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -27,12 +28,19 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/servicios/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/servicios").permitAll()
+                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
+            .exceptionHandling(excepciones -> excepciones.authenticationEntryPoint((request, response, excepcion) -> {
+                boolean bloqueada = Boolean.TRUE.equals(request.getAttribute("cuentaBloqueada"));
+                response.setStatus(401);
+                response.setContentType("text/plain;charset=UTF-8");
+                response.getWriter().write(bloqueada ? "CUENTA_BLOQUEADA" : "SESION_INVALIDA");
+            }))
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -10,4 +10,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByDni(String dni);
     boolean existsByCorreo(String correo);
     boolean existsByDni(String dni);
+    long countByRol(String rol);
+    java.util.List<Usuario> findByRol(String rol);
 }

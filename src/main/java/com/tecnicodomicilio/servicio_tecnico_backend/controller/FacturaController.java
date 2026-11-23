@@ -1,14 +1,14 @@
 package com.tecnicodomicilio.servicio_tecnico_backend.controller;
 
-import com.tecnicodomicilio.servicio_tecnico_backend.dto.FacturaResponse;
 import com.tecnicodomicilio.servicio_tecnico_backend.model.Factura;
-import com.tecnicodomicilio.servicio_tecnico_backend.repository.FacturaRepository;
 import com.tecnicodomicilio.servicio_tecnico_backend.service.FacturaPdfService;
 import com.tecnicodomicilio.servicio_tecnico_backend.service.FacturaService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,43 +16,37 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "*")
 public class FacturaController {
 
-    private final FacturaRepository facturaRepository;
-    private final FacturaPdfService facturaPdfService;
     private final FacturaService facturaService;
+    private final FacturaPdfService facturaPdfService;
 
-    public FacturaController(FacturaRepository facturaRepository, FacturaPdfService facturaPdfService,
-                              FacturaService facturaService) {
-        this.facturaRepository = facturaRepository;
-        this.facturaPdfService = facturaPdfService;
+    public FacturaController(FacturaService facturaService, FacturaPdfService facturaPdfService) {
         this.facturaService = facturaService;
+        this.facturaPdfService = facturaPdfService;
     }
 
     @PostMapping("/generar/{ticketId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> generar(@PathVariable Long ticketId) {
         try {
-            FacturaResponse response = facturaService.generar(ticketId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            return ResponseEntity.status(HttpStatus.CREATED).body(facturaService.generar(ticketId));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
     @GetMapping("/ticket/{ticketId}")
-    public ResponseEntity<?> obtenerPorTicket(@PathVariable Long ticketId) {
+    public ResponseEntity<?> obtenerPorTicket(@PathVariable Long ticketId, Authentication authentication) {
         try {
-            FacturaResponse response = facturaService.obtenerPorTicket(ticketId);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(facturaService.obtenerPorTicket(ticketId, authentication.getName()));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 
     @GetMapping("/{id}/pdf")
-    public ResponseEntity<?> descargarPdf(@PathVariable Long id) {
+    public ResponseEntity<?> descargarPdf(@PathVariable Long id, Authentication authentication) {
         try {
-            Factura factura = facturaRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Factura no encontrada"));
-
+            Factura factura = facturaService.obtenerAutorizada(id, authentication.getName());
             byte[] pdfBytes = facturaPdfService.generarPdf(factura);
 
             HttpHeaders headers = new HttpHeaders();

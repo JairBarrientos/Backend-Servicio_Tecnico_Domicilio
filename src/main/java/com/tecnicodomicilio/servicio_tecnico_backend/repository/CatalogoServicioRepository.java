@@ -8,4 +8,5 @@ import java.util.List;
 public interface CatalogoServicioRepository extends JpaRepository<CatalogoServicio, Long> {
     List<CatalogoServicio> findByActivoTrue();
     List<CatalogoServicio> findByCategoria(String categoria);
+    boolean existsByNombreServicio(String nombreServicio);
 }

@@ -54,3 +54,8 @@ Thumbs.db
 # Configuración local
 # ============================================
 src/main/resources/application.propertiessrc/main/resources/application.properties
+
+
+uploads/
+private-uploads/
+uploads/

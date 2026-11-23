@@ -52,4 +52,7 @@ public class CatalogoServicio {
 
     @Column(name = "fecha_creacion", updatable = false, insertable = false)
     private LocalDateTime fechaCreacion;
+
+    @Column(name = "imagen_url", length = 255)
+    private String imagenUrl;
 }

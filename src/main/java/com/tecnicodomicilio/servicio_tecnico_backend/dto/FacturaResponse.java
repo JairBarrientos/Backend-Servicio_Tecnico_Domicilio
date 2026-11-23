@@ -16,6 +16,10 @@ public class FacturaResponse {
     private Long id;
     private String numeroFactura;
     private Long ticketId;
+    private String codigoTicket;
+    private String tituloServicio;
+    private String clienteNombre;
+    private String tecnicoNombre;
     private BigDecimal subtotal;
     private BigDecimal descuento;
     private BigDecimal impuesto;
@@ -23,4 +27,5 @@ public class FacturaResponse {
     private String metodoPago;
     private String estadoPago;
     private LocalDateTime fechaEmision;
+    private LocalDateTime fechaPago;
 }

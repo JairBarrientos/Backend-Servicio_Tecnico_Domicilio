@@ -136,4 +136,10 @@ public class Ticket {
 
     @Column(name = "mensaje_cancelacion", length = 200)
     private String mensajeCancelacion;
+
+    @Column(name = "cotizacion_monto", precision = 10, scale = 2)
+    private BigDecimal cotizacionMonto;
+
+    @Column(name = "cotizacion_detalle", columnDefinition = "TEXT")
+    private String cotizacionDetalle;
 }

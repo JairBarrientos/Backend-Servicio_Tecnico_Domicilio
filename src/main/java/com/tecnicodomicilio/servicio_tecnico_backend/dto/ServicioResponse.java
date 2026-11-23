@@ -21,4 +21,6 @@ public class ServicioResponse {
     private BigDecimal precioMaximo;
     private String tiempoEstimado;
     private Boolean requierePiezas;
+    private String imagenUrl;
+    private Boolean activo;
 }

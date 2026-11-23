@@ -52,4 +52,27 @@ public class UsuarioController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}/bloquear")
+    public ResponseEntity<?> bloquear(@PathVariable Long id, Authentication authentication) {
+        try {
+            UsuarioResponse response = usuarioService.bloquear(id, authentication.getName());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping(value = "/perfil/foto",
+        consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> subirFoto(Authentication authentication,
+                                        @org.springframework.web.bind.annotation.RequestParam("file")
+                                        org.springframework.web.multipart.MultipartFile file) {
+        try {
+            return ResponseEntity.ok(usuarioService.actualizarFoto(authentication.getName(), file));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
 }

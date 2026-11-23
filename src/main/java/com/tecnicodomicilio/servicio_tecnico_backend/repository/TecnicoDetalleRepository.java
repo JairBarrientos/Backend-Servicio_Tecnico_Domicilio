@@ -14,6 +14,8 @@ public interface TecnicoDetalleRepository extends JpaRepository<TecnicoDetalle, 
 
     Optional<TecnicoDetalle> findByTecnicoId(Long tecnicoId);
 
+    List<TecnicoDetalle> findByEstadoVerificacionOrderByFechaEnvioRevisionAsc(String estadoVerificacion);
+
     @Query(value = """
             SELECT u.id, u.nombres, u.apellidos, td.especialidades, td.calificacion_promedio,
                    td.total_servicios, td.tarifa_visita,
@@ -22,6 +24,7 @@ public interface TecnicoDetalleRepository extends JpaRepository<TecnicoDetalle, 
             JOIN tecnicos_detalles td ON td.tecnico_id = u.id
             WHERE u.rol = 'TECNICO'
               AND u.estado = 'ACTIVO'
+              AND td.estado_verificacion = 'APROBADO'
               AND fn_calcular_distancia(:latitud, :longitud, u.latitud, u.longitud) <= td.radio_cobertura
             ORDER BY distancia_km ASC
             """, nativeQuery = true)
@@ -34,6 +37,7 @@ public interface TecnicoDetalleRepository extends JpaRepository<TecnicoDetalle, 
             JOIN tecnicos_detalles td ON td.tecnico_id = u.id
             WHERE u.rol = 'TECNICO'
               AND u.estado = 'ACTIVO'
+              AND td.estado_verificacion = 'APROBADO'
               AND u.latitud IS NOT NULL AND u.longitud IS NOT NULL
               AND fn_calcular_distancia(:latitud, :longitud, u.latitud, u.longitud) <= td.radio_cobertura
               AND fn_tecnico_disponible(u.id, :fechaHora) = true
